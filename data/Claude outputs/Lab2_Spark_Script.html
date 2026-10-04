@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>سكريبت سكشن Spark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one narrow column of cue cards, read on a phone while the slides are on the projector */
+:root{
+  --bg:#F3F5F2; --surface:#FFFFFF; --ink:#17202B; --muted:#5C6672; --line:#DDE2E5;
+  --blue:#1D5FBF; --blue-soft:#E7EFFA; --red:#C2421C; --red-soft:#FBEDE6;
+  --green:#1B7A4D; --green-soft:#E5F4EC; --board:#FBFCFA; --grid:#E6EAEC;
+  --f-body:"IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif; --f-mono:"IBM Plex Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11151B; --surface:#19202A; --ink:#E7ECF2; --muted:#9AA5B2; --line:#2A3340;
+  --blue:#82B2FF; --blue-soft:#1C2A3F; --red:#FF946E; --red-soft:#3A2219;
+  --green:#6FD2A0; --green-soft:#16302A; --board:#151B23; --grid:#222B36; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11151B; --surface:#19202A; --ink:#E7ECF2; --muted:#9AA5B2; --line:#2A3340;
+  --blue:#82B2FF; --blue-soft:#1C2A3F; --red:#FF946E; --red-soft:#3A2219;
+  --green:#6FD2A0; --green-soft:#16302A; --board:#151B23; --grid:#222B36; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17.5px;line-height:1.75;padding-inline:16px;padding-block:0 48px}
+.wrap{max-width:640px;margin-inline:auto}
+bdi.en{font-family:var(--f-body);font-weight:600;color:var(--blue);unicode-bidi:isolate;direction:ltr}
+code{font-family:var(--f-mono);font-size:.86em;background:var(--blue-soft);color:var(--ink);padding:1px 6px;border-radius:5px;unicode-bidi:isolate;white-space:nowrap}
+header.top{padding-block:28px 8px}
+h1{font-size:1.65rem;line-height:1.35;margin:0 0 4px;text-wrap:balance}
+.sub{color:var(--muted);margin:0}
+.sub bdi.en{color:var(--muted)}
+.legend{display:grid;gap:6px;margin:18px 0 6px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:12px;font-size:.95rem}
+.legend div{display:flex;gap:10px;align-items:baseline}
+.tag{flex:none;font-size:.78rem;font-weight:700;letter-spacing:.02em;padding:1px 9px;border-radius:999px}
+.t-say{background:var(--blue-soft);color:var(--blue)}.t-draw{background:var(--board);color:var(--ink);border:1px dashed var(--muted)}
+.t-ask{background:var(--green-soft);color:var(--green)}.t-tip{background:var(--red-soft);color:var(--red)}
+nav.parts{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;gap:8px;overflow-x:auto;padding-block:10px;margin-inline:-16px;padding-inline:16px;border-bottom:1px solid var(--line);scrollbar-width:none}
+nav.parts a{flex:none;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:.88rem;white-space:nowrap}
+nav.parts a:focus-visible,summary:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.part{margin-top:30px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:6px}
+.part h2{margin:0;font-size:1.25rem}
+.part span{color:var(--muted);font-size:.9rem;white-space:nowrap}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px;display:grid;gap:12px}
+.card.key{border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.card.quick{background:transparent}
+.head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.num{font-weight:700;font-size:1.05rem}
+.meta{display:flex;gap:6px;align-items:center}
+.chip{font-size:.78rem;padding:1px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.chip.k{border-color:var(--blue);color:var(--blue);font-weight:700}
+.title{direction:ltr;text-align:right;font-weight:600;color:var(--muted);margin-top:-8px;font-size:.95rem}
+.lbl{font-size:.8rem;font-weight:700;margin-bottom:4px}
+.say ul{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.say li{background:var(--blue-soft);border-radius:12px 12px 12px 4px;padding:8px 12px}
+.quick .say li{background:transparent;padding:0 2px;color:var(--muted)}
+.draw{background:var(--board);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:18px 18px;border:1px dashed var(--muted);border-radius:12px;padding:12px}
+.draw svg{display:block;width:100%;max-width:420px;height:auto;margin:4px auto 8px;direction:ltr}
+.draw ol{margin:0;padding-inline-start:22px;font-size:.95rem}
+svg .fl{fill:var(--surface);stroke:var(--ink);stroke-width:1.6}
+svg .nofill{fill:none}
+svg .ln{stroke:var(--ink);stroke-width:1.8;fill:none}
+svg rect.ln,svg ellipse.ln{fill:none}
+svg .ac{stroke:var(--red);stroke-width:2;fill:none}
+svg .arw{fill:var(--ink)}
+svg .dot{fill:var(--red)}
+svg text{font-family:var(--f-mono);font-size:14px}
+svg .tx{fill:var(--ink)} svg .tx2{fill:var(--red);font-weight:700} svg .sm{font-size:12px} svg .big{font-size:22px}
+.ask{display:grid;gap:10px}
+.q{background:var(--green-soft);border-radius:12px;padding:10px 12px}
+.q p{margin:0;font-weight:600}
+details{margin-top:6px}
+summary{cursor:pointer;color:var(--green);font-weight:700;font-size:.9rem;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"＋ ";}
+details[open] summary::before{content:"－ ";}
+details p{margin:6px 0 0}
+.tip{background:var(--red-soft);border-radius:12px;padding:10px 12px;font-size:.95rem}
+.tip .lbl{color:var(--red)}
+footer{margin-top:30px;color:var(--muted);font-size:.9rem;text-align:center}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto}}
+html{scroll-behavior:smooth}
+</style>
+<div class="wrap" dir="rtl" lang="ar">
+<header class="top"><h1>سكريبت سكشن 2: <bdi class="en">Spark</bdi></h1>
+<p class="sub">بتمشي مع السلايدز بالترتيب · حوالي 56 دقيقة كلام قبل النوتبوك</p>
+<div class="legend">
+<div><span class="tag t-say">قول</span><span>الكلام اللي هتقوله، بالترتيب</span></div>
+<div><span class="tag t-draw">ارسم</span><span>رسمة بسيطة على البورد، وتحتها خطوات رسمها</span></div>
+<div><span class="tag t-ask">اسأل</span><span>اسأل الطلبة، استنى يفكروا، وبعدين دوس «الإجابة»</span></div>
+<div><span class="tag t-tip">خد بالك</span><span>حاجة لازم تعرفها قبل ما توصل للسلايد</span></div>
+</div></header>
+<nav class="parts" aria-label="أجزاء السكشن"><a href="#p1">ليه Spark؟</a><a href="#p2">Spark من جوه</a><a href="#p3">DataFrames والكسل</a><a href="#p4">باقي الأدوات و RDDs</a><a href="#p5">اللاب</a></nav>
+<section id="p1"><div class="part"><h2>ليه Spark؟</h2><span>سلايد 1 – 6 · 8 د</span></div>
+<article class="card" id="s1"><div class="head"><span class="num">سلايد 1</span><span class="meta"><span class="chip">دقيقة</span></span></div>
+<div class="title">Lab 2 — Spark for Big Data</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li>الأسبوع اللي فات اللابتوب تعب لما كبّرنا الداتا. فاكرين؟</li><li>النهارده هنتعرف على الأداة اللي اتعملت مخصوص عشان المشكلة دي: <bdi class="en">Apache Spark</bdi>.</li></ul></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>حد فاكر الجهاز وقف عند كام شهر من داتا التاكسي؟</p><details><summary>الإجابة</summary><p>مش مهم الرقم بالظبط. المهم إن كان فيه حد، والـ <bdi class="en">RAM</bdi> اتملت. النهارده هنشوف إزاي نعدّي الحد ده.</p></details></div></div>
+</article>
+<article class="card" id="s2"><div class="head"><span class="num">سلايد 2</span><span class="meta"><span class="chip">دقيقتين</span></span></div>
+<div class="title">What is Big Data?</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li><bdi class="en">Big Data</bdi> يعني داتا كبيرة أو سريعة أو ملخبطة لدرجة إن جهاز واحد مش قادر يخلّصها في وقت معقول.</li><li>شيت إكسل فيه 10 آلاف صف؟ عادي جدًا. كل عمليات الفيزا في مصر في يوم واحد؟ مستحيل على جهاز واحد.</li><li>الحل: بدل جهاز واحد شايل الشغل كله، نقسّم الداتا والشغل على أجهزة كتير شغالة مع بعض. الأجهزة دي اسمها <bdi class="en">cluster</bdi> (مجموعة أجهزة بتشتغل كأنها جهاز واحد).</li></ul></div>
+<div class="draw"><div class="lbl">ارسم على البورد</div><svg viewBox="0 0 360 150" role="img" aria-label="one worker vs four workers">
+<rect class="fl" x="20" y="40" width="80" height="60" rx="6"/><text class="tx" x="60" y="76" text-anchor="middle">1 worker</text>
+<text class="tx2" x="60" y="125" text-anchor="middle">week</text>
+<line class="ln" x1="150" y1="20" x2="150" y2="130"/>
+<g>
+<rect class="fl" x="180" y="30" width="70" height="36" rx="6"/><rect class="fl" x="270" y="30" width="70" height="36" rx="6"/>
+<rect class="fl" x="180" y="78" width="70" height="36" rx="6"/><rect class="fl" x="270" y="78" width="70" height="36" rx="6"/>
+<text class="tx" x="215" y="53" text-anchor="middle">w1</text><text class="tx" x="305" y="53" text-anchor="middle">w2</text>
+<text class="tx" x="215" y="101" text-anchor="middle">w3</text><text class="tx" x="305" y="101" text-anchor="middle">w4</text>
+<text class="tx2" x="260" y="18" text-anchor="middle">cluster</text>
+<text class="tx2" x="260" y="140" text-anchor="middle">day</text></g></svg><ol><li>على الشمال: راجل واحد قدامه كومة ورق كبيرة، واكتب تحته «أسبوع».</li><li>على اليمين: 4 رجالة، كل واحد قدامه كومة صغيرة، واكتب تحتهم «يوم».</li><li>اكتب فوق اليمين كلمة <bdi class="en">cluster</bdi>.</li></ol></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>عندك 10 آلاف ورقة امتحان. مصحح واحد ولا 100 مصحح؟ وليه؟</p><details><summary>الإجابة</summary><p>100 مصحح طبعًا، كل واحد ياخد 100 ورقة ويخلصوا في يوم. وده بالظبط فكرة الـ <bdi class="en">cluster</bdi>: نقسّم الشغل ونشتغل على التوازي (<bdi class="en">parallel</bdi>).</p></details></div></div>
+</article>
+<article class="card" id="s3"><div class="head"><span class="num">سلايد 3</span><span class="meta"><span class="chip">دقيقة</span></span></div>
+<div class="title">The 3 Vs of Big Data</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li><bdi class="en">Volume</bdi>: الحجم. زي كل الصور اللي بتترفع على إنستجرام.</li><li><bdi class="en">Velocity</bdi>: السرعة. البنك لازم يعرف في ثواني إن عملية الكارت دي نصب ولا لأ.</li><li><bdi class="en">Variety</bdi>: التنوع. تويتة غير جدول بنك غير فيديو.</li><li>في المحاضرة الدكتور قال 4، وهنا 3. العدد بيختلف من كتاب للتاني والفكرة واحدة.</li></ul></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>لازم التلاتة يتحققوا مع بعض عشان نقول دي <bdi class="en">Big Data</bdi>؟</p><details><summary>الإجابة</summary><p>لأ. كفاية واحدة بس تبقى مشكلة. مثلًا داتا مش كبيرة بس جاية بسرعة رهيبة، دي محتاجة أدوات <bdi class="en">Big Data</bdi> برضه.</p></details></div></div>
+</article>
+<article class="card quick" id="s4"><div class="head"><span class="num">سلايد 4</span><span class="meta"><span class="chip">عدّي بسرعة</span><span class="chip">دقيقة</span></span></div>
+<div class="title">The Big Data Tools Landscape</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li>مفيش أداة واحدة بتعمل كل حاجة. كل أداة ليها دور.</li><li>متحفظوش الأسامي. افتكروا الأدوار: تخزين، ونقل داتا، ومعالجة، واستعلام.</li><li>مثال واحد يكفي: <bdi class="en">Kafka</bdi> زي البوسطجي، بيوصّل الداتا من مكان لمكان من غير ما يقراها. و <bdi class="en">Spark</bdi> هو اللي بيقرا ويحلل.</li></ul></div>
+</article>
+<article class="card" id="s5"><div class="head"><span class="num">سلايد 5</span><span class="meta"><span class="chip">دقيقتين</span></span></div>
+<div class="title">Hadoop vs. Spark: Not Rivals</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li>ناس كتير فاكرة إن <bdi class="en">Hadoop</bdi> و <bdi class="en">Spark</bdi> منافسين. لأ، الاتنين بيكمّلوا بعض.</li><li><bdi class="en">Hadoop</bdi> فيه 3 حاجات: <bdi class="en">HDFS</bdi> (بيخزّن الملفات على أجهزة كتير)، و <bdi class="en">MapReduce</bdi> (بيعالج، بس بطيء لأنه بيكتب على الهارد بعد كل خطوة)، و <bdi class="en">YARN</bdi> (بيوزّع الموارد).</li><li><bdi class="en">Spark</bdi> بيعالج بس، ومعندوش مكان يخزّن فيه. فبيقرا من <bdi class="en">HDFS</bdi> أو من الكلاود.</li><li>يعني <bdi class="en">Spark</bdi> بيشيل <bdi class="en">MapReduce</bdi> ويقعد مكانه. مش بيشيل <bdi class="en">Hadoop</bdi> كله.</li></ul></div>
+<div class="draw"><div class="lbl">ارسم على البورد</div><svg viewBox="0 0 360 150" role="img" aria-label="Hadoop with Spark replacing MapReduce">
+<rect class="ln nofill" x="10" y="25" width="340" height="110" rx="8"/><text class="tx" x="20" y="18">Hadoop</text>
+<rect class="fl" x="25" y="50" width="95" height="50" rx="6"/><text class="tx" x="72" y="80" text-anchor="middle">HDFS</text>
+<rect class="fl" x="133" y="50" width="95" height="50" rx="6"/><text class="tx" x="180" y="80" text-anchor="middle">MapReduce</text>
+<line class="ac" x1="138" y1="96" x2="223" y2="54"/>
+<rect class="fl" x="241" y="50" width="95" height="50" rx="6"/><text class="tx" x="288" y="80" text-anchor="middle">YARN</text>
+<text class="tx2" x="180" y="125" text-anchor="middle">Spark</text></svg><ol><li>ارسم مربع كبير واكتب فوقه <bdi class="en">Hadoop</bdi>.</li><li>جواه 3 مربعات: <bdi class="en">HDFS</bdi>، و <bdi class="en">MapReduce</bdi>، و <bdi class="en">YARN</bdi>.</li><li>اشطب على <bdi class="en">MapReduce</bdi> واكتب جنبه <bdi class="en">Spark</bdi> بلون تاني.</li></ol></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>لو هشتغل بـ <bdi class="en">Spark</bdi>، لازم يبقى عندي <bdi class="en">Hadoop</bdi>؟</p><details><summary>الإجابة</summary><p>لأ. <bdi class="en">Spark</bdi> ممكن يشتغل لوحده. وإحنا النهارده هنشغّله على <bdi class="en">Colab</bdi> من غير <bdi class="en">Hadoop</bdi> خالص.</p></details></div></div>
+</article>
+<article class="card" id="s6"><div class="head"><span class="num">سلايد 6</span><span class="meta"><span class="chip">دقيقة</span></span></div>
+<div class="title">Why Apache Spark in This Lab?</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li>ليه <bdi class="en">Spark</bdi> بالذات؟ أهم سببين:</li><li>سريع، لأنه بيشتغل <bdi class="en">in-memory</bdi> (بيحط الداتا في الـ <bdi class="en">RAM</bdi> بدل الهارد).</li><li>الكود اللي هتكتبه على اللابتوب هو هو اللي هيشتغل على <bdi class="en">cluster</bdi> فيه 100 جهاز.</li><li>وبنكتبه <bdi class="en">Python</bdi> عن طريق <bdi class="en">PySpark</bdi>، وبيشتغل على <bdi class="en">Colab</bdi> بسطر واحد.</li></ul></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>الـ <bdi class="en">RAM</bdi> ولا الهارد أسرع؟ وده يفرق في إيه؟</p><details><summary>الإجابة</summary><p>الـ <bdi class="en">RAM</bdi> أسرع بكتير جدًا. عشان كده <bdi class="en">Spark</bdi> أسرع من <bdi class="en">MapReduce</bdi>: بيخلّي النتايج في الذاكرة بدل ما يكتبها على الهارد كل خطوة.</p></details></div></div>
+</article>
+</section>
+<section id="p2"><div class="part"><h2>Spark من جوه</h2><span>سلايد 7 – 11 · 10 د</span></div>
+<article class="card quick" id="s7"><div class="head"><span class="num">سلايد 7</span><span class="meta"><span class="chip">عدّي بسرعة</span><span class="chip">نص دقيقة</span></span></div>
+<div class="title">Agenda</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li>ده اللي جاي: <bdi class="en">Spark</bdi> إيه، ومبني إزاي، والـ <bdi class="en">DataFrames</bdi>، وبعدين نكتب كود.</li></ul></div>
+</article>
+<article class="card" id="s8"><div class="head"><span class="num">سلايد 8</span><span class="meta"><span class="chip">1.5 د</span></span></div>
+<div class="title">What is Apache Spark?</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li><bdi class="en">Spark</bdi> هو <bdi class="en">engine</bdi> (محرك) بيعمل الحسابات على داتا متوزعة على أجهزة كتير.</li><li>بتكلّمه بـ <bdi class="en">Python</bdi> أو <bdi class="en">Java</bdi> أو <bdi class="en">Scala</bdi> أو <bdi class="en">R</bdi>.</li><li>وفوقه مكتبات جاهزة: <bdi class="en">Spark SQL</bdi> للجداول، و <bdi class="en">MLlib</bdi> للـ <bdi class="en">machine learning</bdi>، و <bdi class="en">Structured Streaming</bdi> للداتا اللايف، و <bdi class="en">GraphX</bdi> للعلاقات.</li><li>بصوا على الرسمة: كل المكتبات قاعدة فوق نفس الـ <bdi class="en">engine</bdi>.</li></ul></div>
+</article>
+<article class="card" id="s9"><div class="head"><span class="num">سلايد 9</span><span class="meta"><span class="chip">دقيقة</span></span></div>
+<div class="title">Spark&#x27;s Philosophy</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li>فكّروا فيه زي مطعم كبير.</li><li>فيه شيف واحد شاطر جدًا: ده الـ <bdi class="en">engine</bdi>.</li><li>وعنده أقسام: مشويات وحلويات وسلطات. دي المكتبات.</li><li>والشيف مش بيزرع الخضار بنفسه، بيجيبه من المورّد. وده معناه إن <bdi class="en">Spark</bdi> مش بيخزّن، بيقرا الداتا من مكان تاني.</li></ul></div>
+</article>
+<article class="card key" id="s10"><div class="head"><span class="num">سلايد 10</span><span class="meta"><span class="chip k">مهمة</span><span class="chip">4 د</span></span></div>
+<div class="title">Spark&#x27;s Architecture</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li>دي أهم سلايد في الجزء ده. هرسمها على البورد.</li><li><bdi class="en">Driver</bdi>: المخ. بيقرا الكود بتاعك ويقسّمه لشغلانات صغيرة.</li><li><bdi class="en">Cluster Manager</bdi>: زي الـ <bdi class="en">HR</bdi>، بيوفّر أجهزة وموارد.</li><li><bdi class="en">Executors</bdi>: الموظفين اللي بيشتغلوا بجد. كل واحد على جهاز.</li><li><bdi class="en">Cores</bdi>: إيدين الموظف. كل <bdi class="en">core</bdi> بيعمل <bdi class="en">task</bdi> (مهمة صغيرة) في نفس الوقت.</li><li>الترتيب: الـ <bdi class="en">Driver</bdi> يطلب من الـ <bdi class="en">Cluster Manager</bdi> أجهزة، وبعدين يكلّم الـ <bdi class="en">Executors</bdi> على طول ويوزّع عليهم الشغل.</li></ul></div>
+<div class="draw"><div class="lbl">ارسم على البورد</div><svg viewBox="0 0 360 190" role="img" aria-label="Driver, cluster manager and executors">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arw" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="fl" x="10" y="70" width="80" height="50" rx="6"/><text class="tx" x="50" y="100" text-anchor="middle">Driver</text>
+<rect class="fl" x="130" y="10" width="90" height="40" rx="6"/><text class="tx sm" x="175" y="35" text-anchor="middle">Cluster Mgr</text>
+<g><rect class="fl" x="260" y="20" width="90" height="44" rx="6"/><rect class="fl" x="260" y="73" width="90" height="44" rx="6"/><rect class="fl" x="260" y="126" width="90" height="44" rx="6"/>
+<text class="tx sm" x="305" y="38" text-anchor="middle">Executor</text><text class="tx sm" x="305" y="91" text-anchor="middle">Executor</text><text class="tx sm" x="305" y="144" text-anchor="middle">Executor</text>
+<circle class="dot" cx="293" cy="52" r="5"/><circle class="dot" cx="317" cy="52" r="5"/>
+<circle class="dot" cx="293" cy="105" r="5"/><circle class="dot" cx="317" cy="105" r="5"/>
+<circle class="dot" cx="293" cy="158" r="5"/><circle class="dot" cx="317" cy="158" r="5"/></g>
+<line class="ln" x1="90" y1="78" x2="132" y2="45" marker-end="url(#ah)"/>
+<line class="ac" x1="90" y1="90" x2="258" y2="42" marker-end="url(#ah)"/>
+<line class="ac" x1="90" y1="95" x2="258" y2="95" marker-end="url(#ah)"/>
+<line class="ac" x1="90" y1="100" x2="258" y2="148" marker-end="url(#ah)"/>
+<text class="tx2 sm" x="175" y="185" text-anchor="middle">cores = dots</text></svg><ol><li>مربع على الشمال واكتب فيه <bdi class="en">Driver</bdi>.</li><li>في النص مربع صغير واكتب فيه <bdi class="en">Cluster Manager</bdi>.</li><li>على اليمين 3 مربعات <bdi class="en">Executor</bdi>، وجوا كل واحد دايرتين صغيرين (<bdi class="en">cores</bdi>).</li><li>سهم من الـ <bdi class="en">Driver</bdi> للـ <bdi class="en">Manager</bdi>، وأسهم من الـ <bdi class="en">Driver</bdi> للـ <bdi class="en">Executors</bdi> على طول.</li></ol></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>مين فيهم شايل الداتا؟ الـ <bdi class="en">Driver</bdi> ولا الـ <bdi class="en">Executors</bdi>؟</p><details><summary>الإجابة</summary><p>الـ <bdi class="en">Executors</bdi>. الـ <bdi class="en">Driver</bdi> بيخطط ويوزّع بس، زي المدير اللي مش بيشيل الكراتين بنفسه.</p></details></div><div class="q"><p>لو عندنا 3 <bdi class="en">executors</bdi> وكل واحد فيه 4 <bdi class="en">cores</bdi>، يقدروا يعملوا كام <bdi class="en">task</bdi> في نفس اللحظة؟</p><details><summary>الإجابة</summary><p>12 = 3 × 4.</p></details></div></div>
+</article>
+<article class="card" id="s11"><div class="head"><span class="num">سلايد 11</span><span class="meta"><span class="chip">2.5 د</span></span></div>
+<div class="title">Spark Applications</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li>نفس الكلام بمثال بفلوس.</li><li>المدير (<bdi class="en">Master</bdi>) معاه جدول فيه 6 مبالغ. بيقسّمه على 3 عمال (<bdi class="en">Workers</bdi>)، كل واحد ياخد صفين.</li><li>كل عامل يجمع اللي معاه لوحده، والمدير يجمع النتايج الصغيرة، فيطلع الإجمالي 1400.</li><li>كل حتة من الجدول دي اسمها <bdi class="en">partition</bdi> (جزء من الداتا). وده سر السرعة: كل الأجزاء بتشتغل في نفس الوقت.</li><li>و <bdi class="en">SparkSession</bdi> هي الباب اللي بندخل منه لـ <bdi class="en">Spark</bdi> في الكود.</li></ul></div>
+<div class="draw"><div class="lbl">ارسم على البورد</div><svg viewBox="0 0 360 170" role="img" aria-label="split, sum each part, combine">
+<defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="arw" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text class="tx" x="20" y="22">350</text><text class="tx" x="20" y="44">100</text>
+<text class="tx" x="20" y="80">400</text><text class="tx" x="20" y="102">250</text>
+<text class="tx" x="20" y="138">100</text><text class="tx" x="20" y="160">200</text>
+<line class="ln" x1="65" y1="33" x2="140" y2="33" marker-end="url(#ah2)"/>
+<line class="ln" x1="65" y1="91" x2="140" y2="91" marker-end="url(#ah2)"/>
+<line class="ln" x1="65" y1="149" x2="140" y2="149" marker-end="url(#ah2)"/>
+<rect class="fl" x="145" y="15" width="80" height="36" rx="6"/><text class="tx" x="185" y="38" text-anchor="middle">450</text>
+<rect class="fl" x="145" y="73" width="80" height="36" rx="6"/><text class="tx" x="185" y="96" text-anchor="middle">650</text>
+<rect class="fl" x="145" y="131" width="80" height="36" rx="6"/><text class="tx" x="185" y="154" text-anchor="middle">300</text>
+<line class="ac" x1="225" y1="33" x2="275" y2="85" marker-end="url(#ah2)"/>
+<line class="ac" x1="225" y1="91" x2="275" y2="91" marker-end="url(#ah2)"/>
+<line class="ac" x1="225" y1="149" x2="275" y2="97" marker-end="url(#ah2)"/>
+<text class="tx2 big" x="318" y="98" text-anchor="middle">1400</text></svg><ol><li>اكتب 6 أرقام عمودي على الشمال.</li><li>قسّمهم 3 مجموعات، كل مجموعة رقمين، وارسم سهم لكل مجموعة.</li><li>اكتب مجموع كل مجموعة، وبعدين سهم للإجمالي على اليمين.</li></ol></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>لو عامل منهم اتأخر، الإجمالي هيطلع إمتى؟</p><details><summary>الإجابة</summary><p>مش هيطلع غير لما أبطأ عامل يخلص. وعشان كده تقسيم الداتا بالتساوي على الـ <bdi class="en">partitions</bdi> مهم.</p></details></div></div>
+</article>
+</section>
+<section id="p3"><div class="part"><h2>DataFrames والكسل</h2><span>سلايد 12 – 16 · 12 د</span></div>
+<article class="card" id="s12"><div class="head"><span class="num">سلايد 12</span><span class="meta"><span class="chip">دقيقتين</span></span></div>
+<div class="title">DataFrames</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li><bdi class="en">DataFrame</bdi> يعني جدول: صفوف وأعمدة. زي اللي شفناه في <bdi class="en">Pandas</bdi> الأسبوع اللي فات.</li><li>الفرق إن الجدول هنا ممكن يكون متقطّع على أجهزة كتير.</li><li>الكود ده بيعمل جدول فيه عمود واحد اسمه <bdi class="en">number</bdi> وفيه الأرقام من 0 لـ 999.</li><li>و <code dir="ltr">show()</code> بتعرض أول 20 صف بس، عشان الشاشة متتملاش.</li></ul></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>الجدول ده فيه كام صف بالظبط؟</p><details><summary>الإجابة</summary><p>1000 صف، من 0 لحد 999. إحنا شايفين 20 بس لأن <code dir="ltr">show()</code> بتعرض 20 بشكل افتراضي.</p></details></div></div>
+</article>
+<article class="card key" id="s13"><div class="head"><span class="num">سلايد 13</span><span class="meta"><span class="chip k">مهمة</span><span class="chip">3.5 د</span></span></div>
+<div class="title">Transformations</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li><bdi class="en">Transformation</bdi> (تحويل) يعني عملية بتطلّع جدول جديد. الجدول الأصلي عمره ما بيتغير، وده اسمه <bdi class="en">immutability</bdi>.</li><li>أمثلة: <code dir="ltr">filter</code> (هات الصفوف اللي فيها شرط معيّن) و <code dir="ltr">select</code> (هات أعمدة معيّنة).</li><li>فيه نوعين:</li><li><bdi class="en">Narrow</bdi>: كل جزء بيشتغل لوحده في مكانه. سريع.</li><li><bdi class="en">Wide</bdi>: الأجزاء محتاجة تبدّل داتا مع بعض على الشبكة. النقل ده اسمه <bdi class="en">shuffle</bdi>. وده بطيء.</li></ul></div>
+<div class="draw"><div class="lbl">ارسم على البورد</div><svg viewBox="0 0 360 230" role="img" aria-label="narrow vs wide transformation">
+<g><rect class="fl" x="30" y="10" width="60" height="22" rx="4"/><rect class="fl" x="30" y="40" width="60" height="22" rx="4"/><rect class="fl" x="30" y="70" width="60" height="22" rx="4"/>
+<rect class="fl" x="220" y="10" width="60" height="22" rx="4"/><rect class="fl" x="220" y="40" width="60" height="22" rx="4"/><rect class="fl" x="220" y="70" width="60" height="22" rx="4"/>
+<line class="ln" x1="90" y1="21" x2="220" y2="21"/><line class="ln" x1="90" y1="51" x2="220" y2="51"/><line class="ln" x1="90" y1="81" x2="220" y2="81"/>
+<text class="tx2" x="300" y="56">Narrow</text></g>
+<g transform="translate(0,125)"><rect class="fl" x="30" y="10" width="60" height="22" rx="4"/><rect class="fl" x="30" y="40" width="60" height="22" rx="4"/><rect class="fl" x="30" y="70" width="60" height="22" rx="4"/>
+<rect class="fl" x="220" y="10" width="60" height="22" rx="4"/><rect class="fl" x="220" y="40" width="60" height="22" rx="4"/><rect class="fl" x="220" y="70" width="60" height="22" rx="4"/>
+<line class="ac" x1="90" y1="21" x2="220" y2="21"/><line class="ac" x1="90" y1="21" x2="220" y2="51"/><line class="ac" x1="90" y1="21" x2="220" y2="81"/>
+<line class="ac" x1="90" y1="51" x2="220" y2="21"/><line class="ac" x1="90" y1="51" x2="220" y2="51"/><line class="ac" x1="90" y1="51" x2="220" y2="81"/>
+<line class="ac" x1="90" y1="81" x2="220" y2="21"/><line class="ac" x1="90" y1="81" x2="220" y2="51"/><line class="ac" x1="90" y1="81" x2="220" y2="81"/>
+<text class="tx2" x="300" y="48">Wide</text><text class="tx sm" x="300" y="68">shuffle</text></g></svg><ol><li>عمودين مربعات (شمال ويمين)، كل عمود فيه 3 مربعات.</li><li>فوق: أسهم مستقيمة، كل مربع لمربعه. اكتب <bdi class="en">Narrow</bdi>.</li><li>تحت: أسهم متقاطعة من كل مربع لكل المربعات. اكتب <bdi class="en">Wide = shuffle</bdi>.</li></ol></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>الفصل كله عايز يرتّب نفسه حسب الطول. ده <bdi class="en">Narrow</bdi> ولا <bdi class="en">Wide</bdi>؟ وطيب لو كل واحد بس يعدّ الكراسي اللي في صفه؟</p><details><summary>الإجابة</summary><p>الترتيب حسب الطول <bdi class="en">Wide</bdi>، لأن الناس لازم تقوم وتبدّل أماكنها. وعدّ الكراسي <bdi class="en">Narrow</bdi>، كل واحد في مكانه.</p></details></div><div class="q"><p><code dir="ltr">filter</code> على المرتب ولا <code dir="ltr">groupBy</code> حسب القسم، أنهي فيهم محتاج <bdi class="en">shuffle</bdi>؟</p><details><summary>الإجابة</summary><p><code dir="ltr">groupBy</code>، لأن كل موظفين القسم الواحد لازم يتجمعوا في مكان واحد. أما <code dir="ltr">filter</code> فكل جزء بيفلتر نفسه.</p></details></div></div>
+</article>
+<article class="card key" id="s14"><div class="head"><span class="num">سلايد 14</span><span class="meta"><span class="chip k">مهمة</span><span class="chip">3.5 د</span></span></div>
+<div class="title">Lazy Evaluation &amp; Actions</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li>دي أهم فكرة في السكشن كله.</li><li><bdi class="en">Spark</bdi> كسلان (<bdi class="en">lazy</bdi>). لما تكتب <bdi class="en">transformation</bdi> مش بينفذها، بيكتبها في خطة (<bdi class="en">plan</bdi>) وخلاص.</li><li>التنفيذ بيحصل بس لما تطلب نتيجة بجد. ده اسمه <bdi class="en">Action</bdi>، زي <code dir="ltr">count</code> و <code dir="ltr">take</code> و <code dir="ltr">collect</code>.</li><li>ليه؟ عشان لما يشوف الخطة كلها مرة واحدة، يرتّبها أذكى. مثلًا يفلتر الأول وبعدين يرتّب، فيرتّب داتا أقل.</li></ul></div>
+<div class="draw"><div class="lbl">ارسم على البورد</div><svg viewBox="0 0 360 170" role="img" aria-label="shopping list: transformations then action">
+<rect class="ln nofill" x="40" y="10" width="190" height="110" rx="6"/>
+<text class="tx" x="60" y="40">bread</text><text class="tx2" x="200" y="40">T</text>
+<text class="tx" x="60" y="70">milk</text><text class="tx2" x="200" y="70">T</text>
+<text class="tx" x="60" y="100">eggs</text><text class="tx2" x="200" y="100">T</text>
+<rect class="fl" x="40" y="130" width="190" height="32" rx="6"/><text class="tx" x="60" y="152">go shopping</text><text class="tx2" x="200" y="152">A</text>
+<text class="tx sm" x="250" y="70">plan only</text><text class="tx2 sm" x="250" y="152">runs here</text></svg><ol><li>اكتب ورقة طلبات سوبر ماركت: عيش، لبن، بيض. وجنب كل واحدة اكتب <bdi class="en">T</bdi>.</li><li>تحت خالص اكتب «انزل اشتري» واكتب جنبها <bdi class="en">A</bdi>.</li><li>ارسم سهم من <bdi class="en">A</bdi> لفوق: «هنا بس التنفيذ بيحصل».</li></ol></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>إنت بتنزل السوبر ماركت كل ما تفتكر حاجة، ولا بتستنى الليستة تخلص؟</p><details><summary>الإجابة</summary><p>بتستنى الليستة تخلص وتنزل مرة واحدة. ده بالظبط الـ <bdi class="en">lazy evaluation</bdi>: الـ <bdi class="en">transformations</bdi> هي الليستة، والـ <bdi class="en">action</bdi> هو إنك تنزل.</p></details></div><div class="q"><p>كتبت 5 <bdi class="en">transformations</bdi> ورا بعض ومفيش <bdi class="en">action</bdi>. <bdi class="en">Spark</bdi> اشتغل قد إيه؟</p><details><summary>الإجابة</summary><p>ولا ثانية. مفيش أي حاجة اتنفذت لسه، كله مكتوب في الخطة بس.</p></details></div></div>
+</article>
+<article class="card" id="s15"><div class="head"><span class="num">سلايد 15</span><span class="meta"><span class="chip">دقيقتين</span></span></div>
+<div class="title">End-to-End Example: Flight Data</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li>داتا حقيقية: رحلات طيران سنة 2015. كل صف فيه: رايحة فين، وجاية منين، وكام رحلة.</li><li><code dir="ltr">header=True</code> يعني أول سطر في الملف هو أسامي الأعمدة.</li><li><code dir="ltr">inferSchema=True</code> يعني <bdi class="en">Spark</bdi> يخمّن نوع كل عمود. من غيرها كله هيتقري نص، حتى الأرقام.</li><li>و <code dir="ltr">take(3)</code> <bdi class="en">action</bdi>، فبيجيب أول 3 صفوف.</li></ul></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>لو شلنا <code dir="ltr">inferSchema</code>، وجينا نرتّب حسب عدد الرحلات، إيه اللي هيحصل؟</p><details><summary>الإجابة</summary><p>هيرتّبهم كنص مش كأرقام، فالـ 100 هتيجي قبل الـ 9، لأن الحرف 1 قبل الحرف 9.</p></details></div></div>
+</article>
+<article class="card" id="s16"><div class="head"><span class="num">سلايد 16</span><span class="meta"><span class="chip">دقيقتين</span></span></div>
+<div class="title">Sort, explain &amp; SQL functions</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li><code dir="ltr">sort</code> <bdi class="en">transformation</bdi>، يعني بيطلّع جدول جديد ومش بيلمس القديم.</li><li><code dir="ltr">explain</code> بتورّيك الخطة اللي <bdi class="en">Spark</bdi> ناوي ينفذها، من غير ما ينفذها.</li><li>الخطة بتتقري من تحت لفوق: يقرا الملف، بعدين <bdi class="en">Exchange</bdi>، بعدين يرتّب.</li><li>و <code dir="ltr">max</code> بتجيب أكبر عدد رحلات: 370002.</li></ul></div>
+<div class="draw"><div class="lbl">ارسم على البورد</div><svg viewBox="0 0 360 175" role="img" aria-label="execution plan read bottom to top">
+<defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="arw" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="fl" x="90" y="10" width="160" height="36" rx="6"/><text class="tx" x="170" y="33" text-anchor="middle">Sort</text>
+<rect class="fl" x="90" y="70" width="160" height="36" rx="6"/><text class="tx" x="170" y="93" text-anchor="middle">Exchange</text>
+<ellipse class="ac nofill" cx="170" cy="88" rx="95" ry="26"/>
+<rect class="fl" x="90" y="130" width="160" height="36" rx="6"/><text class="tx" x="170" y="153" text-anchor="middle">FileScan csv</text>
+<line class="ln" x1="170" y1="130" x2="170" y2="116" marker-end="url(#ah3)"/>
+<line class="ln" x1="170" y1="70" x2="170" y2="50" marker-end="url(#ah3)"/>
+<text class="tx2 sm" x="272" y="92">shuffle</text></svg><ol><li>3 مربعات فوق بعض، والسهم طالع لفوق.</li><li>تحت: <bdi class="en">FileScan</bdi> (قراءة الملف). في النص: <bdi class="en">Exchange</bdi>. فوق: <bdi class="en">Sort</bdi>.</li><li>لف دايرة على <bdi class="en">Exchange</bdi> واكتب جنبها: <bdi class="en">shuffle</bdi>.</li></ol></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>ليه في الخطة ظهرت كلمة <bdi class="en">Exchange</bdi>؟ إحنا ما طلبناش نقل داتا.</p><details><summary>الإجابة</summary><p>لأن الترتيب عملية <bdi class="en">wide</bdi>: عشان ترتّب كل الداتا لازم تتنقل بين الأجزاء. يعني <bdi class="en">Exchange</bdi> هي الـ <bdi class="en">shuffle</bdi> اللي اتكلمنا عنه.</p></details></div></div>
+</article>
+</section>
+<section id="p4"><div class="part"><h2>باقي الأدوات و RDDs</h2><span>سلايد 17 – 22 · 7 د</span></div>
+<article class="card" id="s17"><div class="head"><span class="num">سلايد 17</span><span class="meta"><span class="chip">دقيقة</span></span></div>
+<div class="title">A Tour of Spark&#x27;s Toolset</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li><bdi class="en">Spark</bdi> مش جداول بس.</li><li><bdi class="en">Structured Streaming</bdi>: نفس الكود تشغّله على داتا لايف بتعديل بسيط.</li><li><bdi class="en">MLlib</bdi>: <bdi class="en">machine learning</bdi> على داتا ضخمة: <bdi class="en">classification</bdi> (توقّع فئة)، و <bdi class="en">regression</bdi> (توقّع رقم)، و <bdi class="en">clustering</bdi> (تجميع المتشابه).</li><li>هنرجع لهم في سكاشن جاية.</li></ul></div>
+</article>
+<article class="card" id="s18"><div class="head"><span class="num">سلايد 18</span><span class="meta"><span class="chip">1.5 د</span></span></div>
+<div class="title">Structured Streaming: Flight Data</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li>قراءة عادية: <code dir="ltr">spark.read</code>. قراءة لايف: <code dir="ltr">spark.readStream</code>.</li><li>في اللايف مينفعش <bdi class="en">inferSchema</bdi>. لازم تدّيله الـ <bdi class="en">schema</bdi> (أسامي الأعمدة وأنواعها) بنفسك.</li><li>الحل: نقرا الملف مرة قراءة عادية، وناخد منه الـ <bdi class="en">schema</bdi>، ونديها للـ <bdi class="en">stream</bdi>.</li><li>الجزء ده مش في النوتبوك، نظري بس.</li></ul></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>ليه <bdi class="en">Spark</bdi> مش عارف يخمّن الأنواع في الداتا اللايف؟</p><details><summary>الإجابة</summary><p>لأن الداتا لسه بتوصل، فمفيش داتا كاملة قدامه يبص عليها ويخمّن منها.</p></details></div></div>
+</article>
+<article class="card quick" id="s19"><div class="head"><span class="num">سلايد 19</span><span class="meta"><span class="chip">عدّي بسرعة</span><span class="chip">دقيقة</span></span></div>
+<div class="title">Datasets</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li><bdi class="en">Dataset</bdi> نسخة من الـ <bdi class="en">DataFrame</bdi> بتكتشف الأخطاء وإنت بتكتب الكود، قبل ما يشتغل.</li><li>بس خدوا بالكم: موجودة في <bdi class="en">Java</bdi> و <bdi class="en">Scala</bdi> بس. في <bdi class="en">Python</bdi> مش موجودة.</li><li>إحنا هنشتغل بـ <bdi class="en">DataFrames</bdi> و <bdi class="en">RDDs</bdi>، فدي معلومة للعلم.</li></ul></div>
+<div class="tip"><div class="lbl">خد بالك</div>السنين اللي في رسمة الـ <bdi class="en">timeline</bdi> مش مظبوطة. لو حد سأل: <bdi class="en">Spark 1.0</bdi> سنة 2014، و <bdi class="en">1.3</bdi> سنة 2015، و <bdi class="en">1.6</bdi> سنة 2016. والمهم الترتيب: <bdi class="en">RDD</bdi> ثم <bdi class="en">DataFrame</bdi> ثم <bdi class="en">Dataset</bdi>.</div>
+</article>
+<article class="card quick" id="s20"><div class="head"><span class="num">سلايد 20</span><span class="meta"><span class="chip">عدّي بسرعة</span><span class="chip">نص دقيقة</span></span></div>
+<div class="title">Creating a Dataset</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li>ده كود <bdi class="en">Scala</bdi>، ومش هنكتبه. عدّي بسرعة.</li></ul></div>
+</article>
+<article class="card" id="s21"><div class="head"><span class="num">سلايد 21</span><span class="meta"><span class="chip">2.5 د</span></span></div>
+<div class="title">Low-level APIs: RDDs</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li><bdi class="en">RDD</bdi> هو الأساس اللي <bdi class="en">Spark</bdi> كله مبني عليه.</li><li><bdi class="en">Resilient</bdi>: لو جهاز وقع، <bdi class="en">Spark</bdi> يعيد حساب الجزء اللي ضاع، لأنه فاكر الخطوات.</li><li><bdi class="en">Distributed</bdi>: متقسّم على أجهزة.</li><li><bdi class="en">Dataset</bdi>: أي مجموعة عناصر، أرقام أو نص أو أي حاجة.</li><li>بنستخدمه لما الداتا مش جدول، زي نص أو صور، أو لما عايزين نتحكم في كل حاجة بإيدنا.</li></ul></div>
+<div class="draw"><div class="lbl">ارسم على البورد</div><svg viewBox="0 0 360 170" role="img" aria-label="RDD split into partitions on two machines">
+<rect class="ln nofill" x="20" y="10" width="320" height="34" rx="6"/>
+<line class="ln" x1="100" y1="10" x2="100" y2="44"/><line class="ln" x1="180" y1="10" x2="180" y2="44"/><line class="ln" x1="260" y1="10" x2="260" y2="44"/>
+<text class="tx" x="60" y="32" text-anchor="middle">P1</text><text class="tx" x="140" y="32" text-anchor="middle">P2</text><text class="tx" x="220" y="32" text-anchor="middle">P3</text><text class="tx" x="300" y="32" text-anchor="middle">P4</text>
+<rect class="fl" x="30" y="80" width="140" height="60" rx="6"/><text class="tx" x="100" y="106" text-anchor="middle">Machine 1</text><text class="tx sm" x="100" y="128" text-anchor="middle">P1 · P2</text>
+<rect class="fl" x="190" y="80" width="140" height="60" rx="6"/><text class="tx" x="260" y="106" text-anchor="middle">Machine 2</text><text class="tx sm" x="260" y="128" text-anchor="middle">P3 · P4</text>
+<line class="ac" x1="195" y1="85" x2="325" y2="135"/><line class="ac" x1="325" y1="85" x2="195" y2="135"/>
+<text class="tx2 sm" x="260" y="162" text-anchor="middle">recompute P3, P4</text></svg><ol><li>مستطيل طويل واكتب فيه <bdi class="en">RDD</bdi>.</li><li>قطّعه 4 حتت (<bdi class="en">P1</bdi> لحد <bdi class="en">P4</bdi>).</li><li>ارسم جهازين، وكل جهاز ياخد حتتين.</li><li>اشطب على جهاز واحد، واكتب: «<bdi class="en">Spark</bdi> يعيد حساب حتتينه».</li></ol></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>لو الجهاز التاني وقع، الداتا اللي عليه ضاعت؟</p><details><summary>الإجابة</summary><p>لأ. <bdi class="en">Spark</bdi> فاكر الخطوات اللي طلّعت الحتت دي، فبيعيد حسابها على جهاز تاني. وده معنى <bdi class="en">Resilient</bdi>.</p></details></div></div>
+</article>
+<article class="card" id="s22"><div class="head"><span class="num">سلايد 22</span><span class="meta"><span class="chip">1.5 د</span></span></div>
+<div class="title">SparkSession vs. SparkContext</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li>زمان كان فيه 3 أبواب: <bdi class="en">SparkContext</bdi>، و <bdi class="en">SQLContext</bdi>، و <bdi class="en">HiveContext</bdi>.</li><li>دلوقتي باب واحد: <bdi class="en">SparkSession</bdi>.</li><li>ولو محتاج الباب القديم عشان الـ <bdi class="en">RDDs</bdi>، خده منها: <code dir="ltr">spark.sparkContext</code>.</li></ul></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>ينفع أعمل <bdi class="en">SparkContext</bdi> جديد وأنا عندي <bdi class="en">SparkSession</bdi> شغالة؟</p><details><summary>الإجابة</summary><p>لأ، هيطلع <bdi class="en">error</bdi>، لأن <bdi class="en">Spark</bdi> بيسمح بواحد بس في نفس الوقت. وهنشوف ده في النوتبوك.</p></details></div></div>
+</article>
+</section>
+<section id="p5"><div class="part"><h2>اللاب</h2><span>سلايد 23 – 30 · 15 د</span></div>
+<article class="card" id="s23"><div class="head"><span class="num">سلايد 23</span><span class="meta"><span class="chip">1.5 د</span></span></div>
+<div class="title">Lab: Colab Setup &amp; Data</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li><code dir="ltr">files.upload()</code> بتفتح نافذة ترفع منها ملف من جهازك على <bdi class="en">Colab</bdi>.</li><li><code dir="ltr">os.listdir</code> بتعرض الملفات اللي اترفعت، عشان نتأكد إنها موجودة.</li></ul></div>
+<div class="tip"><div class="lbl">خد بالك</div>السلايد بتقول ارفع <bdi class="en">data.zip</bdi> وفكّه، بس الدكتور ما بعتش <bdi class="en">zip</bdi>. الطلبة هيرفعوا الـ <bdi class="en">CSV</bdi> على طول، زي ما النوتبوك بيعمل. قولها لهم صريحة عشان ميدوّروش على ملف مش موجود.</div>
+</article>
+<article class="card" id="s24"><div class="head"><span class="num">سلايد 24</span><span class="meta"><span class="chip">دقيقتين</span></span></div>
+<div class="title">Lab: Setup &amp; first DataFrame</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li>نفس اللي شرحناه في سلايد 15، بس المرة دي هتكتبوه بإيديكم.</li><li>اعملوا <bdi class="en">SparkSession</bdi>، واقروا الملف، وبعدين <code dir="ltr">take(5)</code> و <code dir="ltr">explain</code>.</li></ul></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>قبل ما نشغّل <code dir="ltr">take(5)</code>: مين فيهم <bdi class="en">action</bdi> ومين <bdi class="en">transformation</bdi>؟ <code dir="ltr">read</code> و <code dir="ltr">sort</code> و <code dir="ltr">take</code> و <code dir="ltr">explain</code>.</p><details><summary>الإجابة</summary><p><code dir="ltr">take</code> <bdi class="en">action</bdi> أكيد. و <code dir="ltr">sort</code> <bdi class="en">transformation</bdi>. و <code dir="ltr">explain</code> مش <bdi class="en">action</bdi> ومش <bdi class="en">transformation</bdi>، دي بس بتعرض الخطة.</p></details></div></div>
+<div class="tip"><div class="lbl">خد بالك</div>المسار المكتوب في السلايد (<bdi class="en">/content/data/data/...</bdi>) غلط بالنسبة لملفات الدكتور. المسار الصح: <bdi class="en">/content/2015-summary.csv</bdi>.</div>
+</article>
+<article class="card" id="s25"><div class="head"><span class="num">سلايد 25</span><span class="meta"><span class="chip">دقيقتين</span></span></div>
+<div class="title">Lab: Create an RDD from a collection</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li><code dir="ltr">spark.sparkContext</code> بيجيب الباب القديم، لأننا محتاجينه للـ <bdi class="en">RDDs</bdi>.</li><li><code dir="ltr">list(range(10))</code> ليستة عادية في <bdi class="en">Python</bdi> فيها من 0 لـ 9.</li><li><code dir="ltr">parallelize</code> بيقطّع الليستة <bdi class="en">partitions</bdi> ويوزّعها.</li><li><code dir="ltr">getNumPartitions</code> بتقول اتقسمت كام حتة. عند الدكتور طلعت 2.</li></ul></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>ليه طلعت 2 <bdi class="en">partitions</bdi> بالذات؟</p><details><summary>الإجابة</summary><p>لأن جهاز <bdi class="en">Colab</bdi> المجاني فيه 2 <bdi class="en">cores</bdi>، فـ <bdi class="en">Spark</bdi> قسّم على قدهم.</p></details></div></div>
+<div class="tip"><div class="lbl">خد بالك</div>فيه خلية في النوتبوك فيها <code dir="ltr">SparkContext()</code>. دي هتطلّع <bdi class="en">error</bdi> لأن فيه <bdi class="en">session</bdi> شغالة أصلًا. قول للطلبة يعدّوها.</div>
+</article>
+<article class="card" id="s26"><div class="head"><span class="num">سلايد 26</span><span class="meta"><span class="chip">دقيقتين</span></span></div>
+<div class="title">RDDs are Immutable</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li><code dir="ltr">map</code> بتطبّق دالة على كل عنصر.</li><li>rdd2 مربعات rdd1. ومن rdd2 طلع rdd3 (زائد 5) و rdd4 (ناقص 5).</li><li>rdd1 و rdd2 ما اتغيروش خالص. كل خطوة بتعمل واحد جديد.</li></ul></div>
+<div class="draw"><div class="lbl">ارسم على البورد</div><svg viewBox="0 0 360 150" role="img" aria-label="rdd1 to rdd2 to rdd3 and rdd4">
+<defs><marker id="ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="arw" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<circle class="fl" cx="45" cy="75" r="32"/><text class="tx" x="45" y="80" text-anchor="middle">rdd1</text>
+<circle class="fl" cx="175" cy="75" r="32"/><text class="tx" x="175" y="80" text-anchor="middle">rdd2</text>
+<circle class="fl" cx="310" cy="32" r="28"/><text class="tx" x="310" y="37" text-anchor="middle">rdd3</text>
+<circle class="fl" cx="310" cy="118" r="28"/><text class="tx" x="310" y="123" text-anchor="middle">rdd4</text>
+<line class="ln" x1="77" y1="75" x2="141" y2="75" marker-end="url(#ah4)"/><text class="tx2" x="109" y="65" text-anchor="middle">x²</text>
+<line class="ac" x1="205" y1="62" x2="281" y2="40" marker-end="url(#ah4)"/><text class="tx2" x="243" y="40" text-anchor="middle">+5</text>
+<line class="ac" x1="205" y1="88" x2="281" y2="110" marker-end="url(#ah4)"/><text class="tx2" x="243" y="122" text-anchor="middle">−5</text></svg><ol><li>دايرة <bdi class="en">rdd1</bdi>، وسهم لدايرة <bdi class="en">rdd2</bdi> واكتب على السهم <bdi class="en">x²</bdi>.</li><li>من <bdi class="en">rdd2</bdi> سهمين: واحد لـ <bdi class="en">rdd3</bdi> (<bdi class="en">+5</bdi>) وواحد لـ <bdi class="en">rdd4</bdi> (<bdi class="en">−5</bdi>).</li></ol></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>rdd1 فيه إيه دلوقتي بعد كل التحويلات دي؟</p><details><summary>الإجابة</summary><p>زي ما هو بالظبط: من 0 لـ 9. ده الـ <bdi class="en">immutability</bdi>.</p></details></div></div>
+</article>
+<article class="card key" id="s27"><div class="head"><span class="num">سلايد 27</span><span class="meta"><span class="chip k">مهمة</span><span class="chip">3 د</span></span></div>
+<div class="title">Lazy Evaluation in Action</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li>دي أحلى سلايد في السكشن. هنثبت إن <bdi class="en">Spark</bdi> كسلان.</li><li>اكتبوا قسمة على صفر. شغّلوا. مفيش <bdi class="en">error</bdi>!</li><li>دلوقتي اكتبوا <code dir="ltr">take(2)</code>. هوب، طلع <bdi class="en">ZeroDivisionError</bdi>.</li></ul></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>ليه الـ <bdi class="en">error</bdi> ما ظهرش غير مع <code dir="ltr">take</code>؟</p><details><summary>الإجابة</summary><p>لأن <code dir="ltr">map</code> <bdi class="en">transformation</bdi>، فـ <bdi class="en">Spark</bdi> كتبها في الخطة ومنفذهاش، فما اكتشفش المشكلة. أما <code dir="ltr">take</code> فـ <bdi class="en">action</bdi>، يعني نفّذ فعلًا، وساعتها لقى القسمة على صفر.</p></details></div></div>
+<div class="tip"><div class="lbl">خد بالك</div>قبل ما تشغّل السطر التاني، خلّيهم يتوقعوا الأول: «هيطلع <bdi class="en">error</bdi> ولا لأ؟» وبعدين شغّل. ورسالة الـ <bdi class="en">error</bdi> طويلة جدًا، فقولهم يبصوا على آخر سطر بس.</div>
+</article>
+<article class="card" id="s28"><div class="head"><span class="num">سلايد 28</span><span class="meta"><span class="chip">دقيقتين</span></span></div>
+<div class="title">collect(): an Action</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li><code dir="ltr">collect</code> بيجيب كل العناصر من كل الـ <bdi class="en">executors</bdi> ويحطهم عند الـ <bdi class="en">Driver</bdi>.</li><li><code dir="ltr">persist</code> بتقول لـ <bdi class="en">Spark</bdi>: احتفظ بالنتيجة دي في الذاكرة، عشان لو احتجتها تاني متحسبهاش من الأول.</li></ul></div>
+<div class="draw"><div class="lbl">ارسم على البورد</div><svg viewBox="0 0 360 160" role="img" aria-label="executors send everything to driver">
+<defs><marker id="ah5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="arw" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="fl" x="15" y="10" width="100" height="36" rx="6"/><text class="tx sm" x="65" y="33" text-anchor="middle">Executor 1</text>
+<rect class="fl" x="15" y="62" width="100" height="36" rx="6"/><text class="tx sm" x="65" y="85" text-anchor="middle">Executor 2</text>
+<rect class="fl" x="15" y="114" width="100" height="36" rx="6"/><text class="tx sm" x="65" y="137" text-anchor="middle">Executor 3</text>
+<line class="ac" x1="115" y1="28" x2="232" y2="72" marker-end="url(#ah5)"/>
+<line class="ac" x1="115" y1="80" x2="232" y2="80" marker-end="url(#ah5)"/>
+<line class="ac" x1="115" y1="132" x2="232" y2="88" marker-end="url(#ah5)"/>
+<rect class="ln nofill" x="237" y="55" width="110" height="50" rx="6"/><text class="tx" x="292" y="86" text-anchor="middle">Driver</text>
+<text class="tx2 sm" x="292" y="128" text-anchor="middle">all data here!</text></svg><ol><li>3 مربعات <bdi class="en">Executor</bdi> على الشمال.</li><li>أسهم كلها رايحة لمربع واحد على اليمين: <bdi class="en">Driver</bdi>.</li><li>اكتب جنب الـ <bdi class="en">Driver</bdi>: «لو الداتا ضخمة، الـ <bdi class="en">Driver</bdi> هيتخنق».</li></ol></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>عندك جدول فيه مليار صف. تعمل <code dir="ltr">collect</code> عادي؟</p><details><summary>الإجابة</summary><p>لأ! الـ <bdi class="en">Driver</bdi> جهاز واحد، وذاكرته هتتملي والبرنامج هيقع. استخدم <code dir="ltr">take(n)</code> عشان تشوف عينة بس.</p></details></div></div>
+</article>
+<article class="card" id="s29"><div class="head"><span class="num">سلايد 29</span><span class="meta"><span class="chip">1.5 د</span></span></div>
+<div class="title">Lambda Functions</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li><bdi class="en">lambda</bdi> طريقة مختصرة نكتب بيها <bdi class="en">function</bdi> في سطر واحد.</li><li><code dir="ltr">def sq(x): return x**2</code> هي هي <code dir="ltr">lambda x: x**2</code>.</li><li>بنستخدمها جوه <code dir="ltr">map</code> عشان منقعدش نعرّف <bdi class="en">function</bdi> كاملة لحاجة صغيرة.</li></ul></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>اكتبلي <bdi class="en">lambda</bdi> بتضرب أي رقم في 10.</p><details><summary>الإجابة</summary><p><code dir="ltr">lambda x: x * 10</code></p></details></div></div>
+</article>
+<article class="card" id="s30"><div class="head"><span class="num">سلايد 30</span><span class="meta"><span class="chip">3 د</span></span></div>
+<div class="title">Lab: RDD from a text file</div>
+<div class="say"><div class="lbl" style="color:var(--blue)">قول</div><ul><li><code dir="ltr">textFile</code> بتقرا ملف نصي، وكل سطر بيبقى عنصر.</li><li><code dir="ltr">split</code> بتقطّع السطر كلمات.</li><li><code dir="ltr">map</code> بتطلّع ليستة لكل سطر، يعني ليستة جوه ليستة.</li><li><code dir="ltr">flatMap</code> بتفرد كل الكلمات في ليستة واحدة.</li></ul></div>
+<div class="draw"><div class="lbl">ارسم على البورد</div><svg viewBox="0 0 360 160" role="img" aria-label="map gives list of lists, flatMap gives one list">
+<text class="tx" x="180" y="22" text-anchor="middle">"second line" · "the third line"</text>
+<line class="ln" x1="180" y1="34" x2="90" y2="62"/><line class="ln" x1="180" y1="34" x2="270" y2="62"/>
+<text class="tx2" x="90" y="80" text-anchor="middle">map</text><text class="tx2" x="270" y="80" text-anchor="middle">flatMap</text>
+<rect class="fl" x="10" y="92" width="160" height="58" rx="6"/>
+<text class="tx sm" x="90" y="116" text-anchor="middle">[second, line]</text><text class="tx sm" x="90" y="138" text-anchor="middle">[the, third, line]</text>
+<rect class="fl" x="190" y="92" width="160" height="58" rx="6"/>
+<text class="tx sm" x="270" y="116" text-anchor="middle">second, line, the,</text><text class="tx sm" x="270" y="138" text-anchor="middle">third, line</text></svg><ol><li>اكتب سطرين: «second line» و «the third line».</li><li>تحت الشمال (<bdi class="en">map</bdi>): [[second, line], [the, third, line]].</li><li>تحت اليمين (<bdi class="en">flatMap</bdi>): [second, line, the, third, line].</li></ol></div>
+<div class="ask"><div class="lbl" style="color:var(--green)">اسأل</div><div class="q"><p>لو عايز أعد كل كلمة اتكررت كام مرة في الملف، أستخدم أنهي واحدة؟</p><details><summary>الإجابة</summary><p><bdi class="en">flatMap</bdi>، لأني محتاج كل الكلمات في ليستة واحدة عشان أعدّها. ودي أول خطوة في مثال <bdi class="en">Word Count</bdi> المشهور، اللي هو أساس <bdi class="en">MapReduce</bdi>.</p></details></div></div>
+<div class="tip"><div class="lbl">خد بالك</div>الكلام اللي في السلايد (<bdi class="en">hello spark</bdi>) مثال بس. ملف الدكتور فيه 4 سطور تانية، فالناتج هيطلع مختلف. قولها للطلبة قبل ما يتلخبطوا.</div>
+</article>
+</section>
+<footer>خلصت السلايدز؟ افتح النوتبوك وابدأ من <code dir="ltr">pip install pyspark</code></footer></div>
+</body>
+</html>
